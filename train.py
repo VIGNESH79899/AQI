@@ -41,12 +41,13 @@ def main(pca_variance: float = 0.95, seed: int = 42):
     Xp_test = pca.transform(Xs_test)
 
     param_grid = {
-        "n_estimators": [200, 400],
-        "max_depth": [None, 12, 20],
+        "n_estimators": [50, 100],
+        "max_depth": [10, 15],
         "min_samples_split": [2, 5],
     }
-    rf = RandomForestRegressor(random_state=seed, n_jobs=-1)
-    gs = GridSearchCV(rf, param_grid, cv=3, scoring="r2", n_jobs=-1)
+    # Keep the deployed model within Render's free 512 MB memory limit.
+    rf = RandomForestRegressor(random_state=seed, n_jobs=1)
+    gs = GridSearchCV(rf, param_grid, cv=3, scoring="r2", n_jobs=1)
     gs.fit(Xp_train, y_train)
     model = gs.best_estimator_
     logger.info("Best RF params: %s", gs.best_params_)

@@ -25,7 +25,7 @@ npm run dev
 
 ### Backend API (Gunicorn / WSGI)
 ```bash
-gunicorn -w 4 -b 0.0.0.0:5000 app:app
+gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 2 --timeout 120
 ```
 
 ### Frontend Dashboard (Next.js Production Build)
@@ -39,14 +39,14 @@ npm run start -p 3000
 
 ## 3. Docker Deployment (Backend API)
 ```dockerfile
-FROM python:3.11-slim
+FROM python:3.14-slim
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 COPY . .
-EXPOSE 5000
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000", "--workers", "1", "--threads", "4", "--timeout", "120"]
+EXPOSE 8080
+CMD ["sh", "-c", "gunicorn app:app --bind 0.0.0.0:${PORT:-8080} --workers 1 --threads 2 --timeout 120"]
 ```
 Build & run:
 ```bash
@@ -57,10 +57,15 @@ docker run -p 5000:5000 aqi-backend
 ---
 
 ## 4. Cloud Platforms
-- **Backend (Render / Railway / Fly.io)**: Point to root repository, set start command `gunicorn app:app`, expose port 5000.
-- **Frontend (Vercel / Cloudflare / Netlify)**: Point to `frontend/` directory, set build command `npm run build`, output `.next`. Set `NEXT_PUBLIC_API_URL` to the backend URL.
+- **Backend (Render / Railway / Fly.io)**: Point to the repository root and set the start command to `gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 2 --timeout 120`. The platform provides the port.
+- **Frontend (Vercel / Cloudflare / Netlify)**: Point to `frontend/` directory, set build command `npm run build`, output `.next`. Set `NEXT_PUBLIC_API_BASE` to the backend URL.
 
 ## Environment Variables
-- `PORT` — Flask port (defaults to 5000).
-- `NEXT_PUBLIC_API_URL` — Backend API base URL for Next.js (defaults to `http://localhost:5000`).
+- `PORT` — Flask port provided by the hosting platform.
+- `WAQI_API_KEY` — WAQI token configured only in the backend hosting provider.
+- `NEXT_PUBLIC_API_BASE` — Backend API base URL for Next.js (defaults to same-origin requests locally).
 
+The production model is intentionally trained with a compact Random Forest
+configuration so it remains within Render's free 512 MB memory limit. Keep
+the backend at one Gunicorn worker; additional workers load a separate copy
+of the model into memory.
